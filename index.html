@@ -2,13 +2,48 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <style></style>
+  <style>
+      .country{
+     /*   fill:grey ;*/
+        stroke: white;
+     
+    }
+    .country.selected{
+
+        stroke:black;
+        stroke-width : 4px ;   
+    }
+  </style>
+  
 </head>
 <body>
+  <button id="gender" type="button" class="btn btn-outline-primary">Gender</button>
+  <button id="age" type="button" class="btn btn-outline-primary">Age</button>
+  
 <svg></svg>
 <script src="https://d3js.org/d3.v7.min.js"></script>
-
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.25.6/d3-legend.min.js"></script>
 <script>
+
+function dragstarted(event, d) {
+  if (!event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+}
+
+function dragged(event, d) {
+  d.fx = event.x;
+  d.fy = event.y;
+}
+
+function dragended(event, d) {
+  if (!event.active) simulation.alphaTarget(0);
+  d.fx = null;
+  d.fy = null;
+}
 tooltip = d3
     .select('body')
     .append('div')
@@ -27,6 +62,24 @@ let width = 1000, height = 500;
 let svg = d3.select("svg")
     .attr("viewBox", "0 0 " + width + " " + height)
 
+  d3.select("#gender").on("click", function() {
+    svg.selectAll("*").remove();
+
+    load("gender")
+  })
+
+  d3.select("#age").on("click", function() {
+    svg.selectAll("*").remove();
+      load("age")
+      /*
+    simulation
+      .force("x", d3.forceX().strength(0.5).x(d => xPosition(d.class)))
+      .force("y", d3.forceY().strength(0.2).y( height /2 ))
+      .alphaTarget(0.3)
+      .restart();*/
+  })
+
+function load(buttonValue){
 // Load external data
 Promise.all([d3.json("links-sample.json"), d3.json("cases-sample.json")]).then(data => {
 
@@ -46,9 +99,10 @@ for (let i=0; i < 20; i++) {
     let obj = {x: width/2, y: height/2};
    // obj.id = "node" + i;
    console.log(data[1][i].id)
-    obj.id = "node" + data[1][i].id
+    obj.id =  + data[1][i].id
     console.log(obj.id)
     obj.genderName = data[1][i].gender 
+    obj.age = data[1][i].age
     if(data[1][i].gender == "male"){
         obj.gender =  1
     }
@@ -67,25 +121,39 @@ for (let i=0; i < 18; i++) {
     
    // for(let i=0; i<20; i ++){
 
-        obj.source = "node" + data[0][i].infector ;
-        obj.target = "node" + data[0][i].infectee;
+        obj.source =  data[0][i].infector ;
+        obj.target = data[0][i].infectee;
         links.push(obj);
 }
 console.log(links)
-
+//For gender
+var labels =  ["female","male"]
 let colorScale = d3.scaleOrdinal()
     .domain([0,1])
     .range(["red","blue"])
+//For age
 
-    let node = svg.append("g")
+var labelsAge = ["< 25 ",
+                    "25 - 50",
+                    "50 - 75",
+                    " 75-90 ",
+                    " > 90"]
+let colorScaleAge = d3.scaleSequential()
+.domain([0,90])
+.interpolator(d3.interpolateRdPu);
+
+if(buttonValue == "age")
+{
+  let node = svg.append("g")
       .attr("id", "nodes")
       .selectAll("circle")
       .data(infectData)
       .enter()
       .append("circle")
         .attr("r", 15)
+        .attr("class", "country")
         .style("fill", d=>
-        colorScale(d.gender) )
+        colorScaleAge(d.age) )
         .call(d3.drag()
        .on("start", dragstarted)
         .on("drag", dragged)
@@ -95,16 +163,14 @@ let colorScale = d3.scaleOrdinal()
            console.log(d)
     
             tooltip.html(
-              `<div>PersonID: ${d.id} </div><div>Gender: ${ d.genderName }</div>`
+              `<div>PersonID: ${d.id} </div><div>Gender: ${ d.genderName }</div> <div>Age: ${d.Age }</div>`
             )
             .style('visibility', 'visible');
             })
         .on('mousemove', function (event,d) {
         
- 
-       
-           console.log("yo",d.properties)
-            tooltip.html(`<div>PersonID: ${d.id} </div><div>Gender: ${d.genderName }</div>`)  
+
+            tooltip.html(`<div>PersonID: ${d.id} </div><div>Gender: ${d.genderName }</div> <div>Age: ${d.age }</div> `   )  
             .style('top', event.y - 10 + 'px')
             .style('left', event.x + 10 + 'px');
             d3.select(event.currentTarget)
@@ -114,32 +180,15 @@ let colorScale = d3.scaleOrdinal()
                 tooltip.html(``).style('visibility', 'hidden');
                 d3.select(event.currentTarget)
                 .classed("selected",false)
-            })
-     ;
+            });
 
 
 
-function dragstarted(event, d) {
-  if (!event.active) simulation.alphaTarget(0.3).restart();
-  d.fx = d.x;
-  d.fy = d.y;
-}
 
-function dragged(event, d) {
-  d.fx = event.x;
-  d.fy = event.y;
-}
-
-function dragended(event, d) {
-  if (!event.active) simulation.alphaTarget(0);
-  d.fx = null;
-  d.fy = null;
-}
 
 let xPosition = d3.scaleOrdinal()
-  .domain([0, 1, ])
-  .range([5000, 500]);
-
+  .domain([0,100 ])
+  .range([0, 100]);
   let simulation = d3.forceSimulation()
     .nodes(infectData)
     .force("x", d3.forceX().strength(0.5).x( width /2 ))
@@ -171,8 +220,110 @@ let xPosition = d3.scaleOrdinal()
     .attr("fill", "none")
     .attr("stroke", "black");
 
+    var legend = d3.legendColor()
+   .labels(labelsAge)
+   .title("Age")
+   .scale(colorScaleAge)
 
-}) //promise end
+    svg.append("g")
+    .attr("transform", "translate(900,355)")
+    .call(legend);
+}// end of 1 condition
+else{
+  let node = svg.append("g")
+      .attr("id", "nodes")
+      .selectAll("circle")
+      .data(infectData)
+      .enter()
+      .append("circle")
+        .attr("r", 15)
+        .attr("class", "country")
+        .style("fill", d=>
+        colorScale(d.gender) )
+        .call(d3.drag()
+       .on("start", dragstarted)
+        .on("drag", dragged)
+     .on("end", dragended)
+     )
+     .on("mouseover", (event,d, i) => {
+           console.log(d)
+    
+            tooltip.html(
+              `<div>PersonID: ${d.id} </div><div>Gender: ${ d.genderName }</div> <div>Age: ${d.Age }</div>`
+            )
+            .style('visibility', 'visible');
+            })
+        .on('mousemove', function (event,d) {
+        
+ 
+       
+            tooltip.html(`<div>PersonID: ${d.id} </div><div>Gender: ${d.genderName }</div> <div>Age: ${d.age }</div> `   )  
+            .style('top', event.y - 10 + 'px')
+            .style('left', event.x + 10 + 'px');
+            d3.select(event.currentTarget)
+                .classed("selected",true)
+        })
+        .on("mouseout", (event,d,i) => {
+                tooltip.html(``).style('visibility', 'hidden');
+                d3.select(event.currentTarget)
+                .classed("selected",false)
+            });
+
+
+
+
+let xPosition = d3.scaleOrdinal()
+  .domain([0, 1 ])
+  .range([5000, 500]);
+  let simulation = d3.forceSimulation()
+    .nodes(infectData)
+    .force("x", d3.forceX().strength(0.5).x( width /2 ))
+    .force("y", d3.forceY().strength(0.2).y( height /2 ))
+    .force("link", d3.forceLink(links).id(d => d.id))
+    .force("charge", d3.forceManyBody().strength(20))
+    .force("collide", d3.forceCollide().strength(1).radius(30))
+    .force("link", d3.forceLink(links)
+    .id(d => d.id)
+    .distance(20)
+    .strength(1.10)
+   )
+    .on("tick", d => {
+        node
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y);
+        
+        linkpath
+       .attr("d", d => "M" + d.source.x + "," + d.source.y + " " + d.target.x + "," + d.target.y);
+    });
+
+    
+    let linkpath = svg.append("g")
+    .attr("id", "links")
+    .selectAll("path")
+    .data(links)
+    .enter()
+    .append("path")
+    .attr("fill", "none")
+    .attr("stroke", "black");
+
+    var legend = d3.legendColor()
+   .labels(labels)
+   .title("Gender")
+   .scale(colorScale)
+
+    svg.append("g")
+    .attr("transform", "translate(900,355)")
+    .call(legend);
+}//end if else
+ 
+
+  }) //promise end
+
+}    
+
+
+load()
+
 </script>
 
 </body>
